@@ -1,42 +1,59 @@
 'use server'
 import { getItineraryData } from '../data/itineraries'
 
-export async function generateItinerary(formData: { destination: string; duration: string; budget: string; vibe: string; lang?: 'vi' | 'en' }) {
-  await new Promise((resolve) => setTimeout(resolve, 1500))
+export async function generateItinerary(formData: { destination: string; duration: string; budget: string; vibe: string; lang?: 'vi' | 'en'; destEn: string }) {
+  await new Promise((resolve) => setTimeout(resolve, 1500)) // Giả lập loading cinematic
 
   const lang = formData.lang || 'vi'
-  const rawData = getItineraryData(formData.destination)
+  const rawData = getItineraryData(formData.destination, formData.destEn)
 
   const parsedDays = parseInt(formData.duration.match(/\d+/)?.[0] || '4')
   const actualDays = Math.min(parsedDays, rawData.daysVi.length)
   
-  const selectedDays = lang === 'en' 
-    ? rawData.daysEn.slice(0, actualDays) 
-    : rawData.daysVi.slice(0, actualDays)
+  const selectedDays = lang === 'en' ? rawData.daysEn.slice(0, actualDays) : rawData.daysVi.slice(0, actualDays)
 
-  const overviewText = lang === 'en' ? rawData.overviewEn : rawData.overviewVi
-  const secrets = lang === 'en' ? rawData.insiderSecretsEn : rawData.insiderSecretsVi
-
-  let budgetMultiplier = 1
-  let styleText = lang === 'en' ? "relaxed and comfortable" : "thư giãn"
-  
-  if (formData.budget.includes('Tiết kiệm') || formData.budget.includes('Budget')) { 
-    budgetMultiplier = 0.6
-    styleText = lang === 'en' ? "backpacking and authentic local lifestyle" : "bụi bặm, len lỏi vào từng ngóc ngách đời sống"
-  } else if (formData.budget.includes('Sang chảnh') || formData.budget.includes('Luxury')) { 
-    budgetMultiplier = 3.5
-    styleText = lang === 'en' ? "luxury resort and premium experiences" : "nghỉ dưỡng cao cấp, tận hưởng dịch vụ tinh hoa nhất"
+  // 1. Phân tích phong cách cá nhân hóa (Vibe)
+  let vibeDescription = ""
+  if (lang === 'vi') {
+    vibeDescription = `Đặc biệt, lịch trình ${actualDays} ngày này đã được hệ thống tính toán tối ưu dành riêng cho phong cách "${formData.vibe}".`
+  } else {
+    vibeDescription = `Specifically, this ${actualDays}-day itinerary is algorithmically tailored for your "${formData.vibe}" travel vibe.`
   }
 
-  const basePerDay = 850000 
-  const totalCost = basePerDay * actualDays * budgetMultiplier
-  const formattedCost = new Intl.NumberFormat(lang === 'en' ? 'en-US' : 'vi-VN', { style: 'currency', currency: lang === 'en' ? 'USD' : 'VND' }).format(lang === 'en' ? totalCost / 25000 : totalCost)
+  // 2. Tính toán ngân sách bóc tách chi tiết (Chuẩn xác như reviewer yêu cầu)
+  let accMulti = 1, foodMulti = 1, transMulti = 1;
+  const isBudget = formData.budget.includes('Tiết kiệm') || formData.budget.includes('Budget')
+  const isLuxury = formData.budget.includes('Sang chảnh') || formData.budget.includes('Luxury')
+
+  if (isBudget) { accMulti = 0.5; foodMulti = 0.6; transMulti = 0.7; }
+  if (isLuxury) { accMulti = 4.0; foodMulti = 3.0; transMulti = 2.5; }
+
+  const budgetBreakdown = {
+    accommodation: 600000 * actualDays * accMulti,
+    food: 400000 * actualDays * foodMulti,
+    transport: 250000 * actualDays * transMulti,
+    misc: 200000 * actualDays
+  }
+  const total = budgetBreakdown.accommodation + budgetBreakdown.food + budgetBreakdown.transport + budgetBreakdown.misc
+
+  const fmt = (val: number) => new Intl.NumberFormat(lang === 'en' ? 'en-US' : 'vi-VN', { 
+    style: 'currency', currency: lang === 'en' ? 'USD' : 'VND', maximumFractionDigits: 0 
+  }).format(lang === 'en' ? val / 25000 : val)
+
+  const budgetTier = isBudget ? (lang === 'vi' ? 'Tiết kiệm' : 'Budget') : (isLuxury ? (lang === 'vi' ? 'Sang chảnh' : 'Luxury') : (lang === 'vi' ? 'Thoải mái' : 'Comfort'))
 
   return {
-    destination: formData.destination,
-    overview: `${overviewText} ${lang === 'en' ? `This ${actualDays}-day itinerary is custom-tailored for your${styleText} style.` : `Lịch trình ${actualDays} ngày này được tinh chỉnh riêng cho bạn theo phong cách ${styleText}.`}`,
-    insiderSecrets: secrets,
-    budgetEstimate: lang === 'en' ? `Comfort - Approx. ${formattedCost} / person` : `Thoải mái - Khoảng ${formattedCost} / người`,
+    destination: lang === 'en' ? formData.destEn : formData.destination,
+    overview: `${lang === 'en' ? rawData.overviewEn : rawData.overviewVi} ${vibeDescription}`,
+    insiderSecrets: lang === 'en' ? rawData.insiderSecretsEn : rawData.insiderSecretsVi,
+    budgetDetails: {
+      tier: budgetTier,
+      accommodation: fmt(budgetBreakdown.accommodation),
+      food: fmt(budgetBreakdown.food),
+      transport: fmt(budgetBreakdown.transport),
+      misc: fmt(budgetBreakdown.misc),
+      total: `${fmt(total * 0.9)} - ${fmt(total * 1.1)}`
+    },
     days: selectedDays
   }
 }
