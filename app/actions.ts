@@ -1,59 +1,105 @@
 'use server'
 import { getItineraryData } from '../data/itineraries'
+import { ItineraryRequest, ItineraryResultData, VibeType, BudgetType, PoolActivity } from '../types'
 
-export async function generateItinerary(formData: { destination: string; duration: string; budget: string; vibe: string; lang?: 'vi' | 'en'; destEn: string }) {
-  await new Promise((resolve) => setTimeout(resolve, 1500)) // Giả lập loading cinematic
-
+export async function generateItinerary(formData: ItineraryRequest): Promise<ItineraryResultData> {
+  await new Promise((resolve) => setTimeout(resolve, 800))
   const lang = formData.lang || 'vi'
-  const rawData = getItineraryData(formData.destination, formData.destEn)
+  const rawData = getItineraryData(formData.destinationVi)
 
-  const parsedDays = parseInt(formData.duration.match(/\d+/)?.[0] || '4')
-  const actualDays = Math.min(parsedDays, rawData.daysVi.length)
+  const vibeMap: Record<string, VibeType[]> = {
+    "Ẩm thực & Văn hóa": ['culture', 'food'], "Culinary & Culture": ['culture', 'food'],
+    "Thiên nhiên hùng vĩ": ['nature'], "Majestic Nature": ['nature'],
+    "Nghỉ dưỡng & Chữa lành": ['relax'], "Wellness & Retreat": ['relax'],
+    "Phiêu lưu mạo hiểm": ['adventure'], "Adventure & Trekking": ['adventure']
+  }
+  const budgetMap: Record<string, BudgetType[]> = {
+    "Tiết kiệm (Phượt bụi)": ['budget'], "Budget (Backpacking)": ['budget'],
+    "Thoải mái (Tiện nghi)": ['budget', 'comfort'], "Comfort (Mid-range)": ['budget', 'comfort'],
+    "Sang chảnh (5 sao)": ['comfort', 'luxury'], "Luxury (Premium)": ['comfort', 'luxury']
+  }
+
+  const requestedVibes = vibeMap[formData.vibe] || ['culture']
+  const requestedBudgets = budgetMap[formData.budget] || ['comfort']
+
+  const pool: PoolActivity[] = rawData.activityPool || []
   
-  const selectedDays = lang === 'en' ? rawData.daysEn.slice(0, actualDays) : rawData.daysVi.slice(0, actualDays)
+  // Tính toán số lượng hoạt động cần thiết (2 hoạt động / 1 ngày)
+  const parsedDays = parseInt(formData.duration.match(/\d+/)?.[0] || '4')
+  const actualDays = Math.min(parsedDays, 4)
+  const requiredSlots = actualDays * 2
 
-  // 1. Phân tích phong cách cá nhân hóa (Vibe)
-  let vibeDescription = ""
-  if (lang === 'vi') {
-    vibeDescription = `Đặc biệt, lịch trình ${actualDays} ngày này đã được hệ thống tính toán tối ưu dành riêng cho phong cách "${formData.vibe}".`
-  } else {
-    vibeDescription = `Specifically, this ${actualDays}-day itinerary is algorithmically tailored for your "${formData.vibe}" travel vibe.`
+  // THUẬT TOÁN CHỐNG TRÙNG LẶP:
+  // B1: Tìm các hoạt động khớp cả Gu và Túi tiền
+  let selectedActs = pool.filter(act => 
+    act.vibes.some(v => requestedVibes.includes(v)) && 
+    act.budgets.some(b => requestedBudgets.includes(b))
+  )
+
+  // B2: Nếu thiếu, nhặt thêm các hoạt động khớp Túi tiền (không quan tâm Gu)
+  if (selectedActs.length < requiredSlots) {
+    const budgetMatches = pool.filter(act => 
+      !selectedActs.includes(act) && 
+      act.budgets.some(b => requestedBudgets.includes(b))
+    )
+    selectedActs = [...selectedActs, ...budgetMatches]
   }
 
-  // 2. Tính toán ngân sách bóc tách chi tiết (Chuẩn xác như reviewer yêu cầu)
-  let accMulti = 1, foodMulti = 1, transMulti = 1;
-  const isBudget = formData.budget.includes('Tiết kiệm') || formData.budget.includes('Budget')
-  const isLuxury = formData.budget.includes('Sang chảnh') || formData.budget.includes('Luxury')
-
-  if (isBudget) { accMulti = 0.5; foodMulti = 0.6; transMulti = 0.7; }
-  if (isLuxury) { accMulti = 4.0; foodMulti = 3.0; transMulti = 2.5; }
-
-  const budgetBreakdown = {
-    accommodation: 600000 * actualDays * accMulti,
-    food: 400000 * actualDays * foodMulti,
-    transport: 250000 * actualDays * transMulti,
-    misc: 200000 * actualDays
+  // B3: Nếu vẫn thiếu, vét nốt kho (miễn là chưa bị trùng)
+  if (selectedActs.length < requiredSlots) {
+    const remaining = pool.filter(act => !selectedActs.includes(act))
+    selectedActs = [...selectedActs, ...remaining]
   }
-  const total = budgetBreakdown.accommodation + budgetBreakdown.food + budgetBreakdown.transport + budgetBreakdown.misc
 
-  const fmt = (val: number) => new Intl.NumberFormat(lang === 'en' ? 'en-US' : 'vi-VN', { 
-    style: 'currency', currency: lang === 'en' ? 'USD' : 'VND', maximumFractionDigits: 0 
-  }).format(lang === 'en' ? val / 25000 : val)
+  // B4: Cắt lấy đúng số lượng cần thiết và xáo trộn ngẫu nhiên
+  const finalSelection = selectedActs.slice(0, requiredSlots).sort(() => 0.5 - Math.random())
 
-  const budgetTier = isBudget ? (lang === 'vi' ? 'Tiết kiệm' : 'Budget') : (isLuxury ? (lang === 'vi' ? 'Sang chảnh' : 'Luxury') : (lang === 'vi' ? 'Thoải mái' : 'Comfort'))
+  // Ráp hoạt động vào Ngày
+  const days = []
+  let actIndex = 0
+  for (let i = 1; i <= actualDays; i++) {
+    const dailyActs = []
+    for (let j = 0; j < 2; j++) {
+      if (actIndex < finalSelection.length) {
+        const act = finalSelection[actIndex]
+        dailyActs.push({
+          time: act.time,
+          title: lang === 'en' ? act.titleEn : act.titleVi,
+          description: lang === 'en' ? act.descriptionEn : act.descriptionVi,
+          cost: act.cost,
+          image: act.image
+        })
+        actIndex++
+      }
+    }
+    
+    // Sort giờ Sáng -> Chiều
+    dailyActs.sort((a, b) => a.time.localeCompare(b.time))
+
+    days.push({
+      day: i,
+      title: lang === 'vi' ? `Hành trình Ngày ${i}` : `Journey Day ${i}`,
+      activities: dailyActs
+    })
+  }
+
+  let accMulti = 1, foodMulti = 1, transMulti = 1
+  if (requestedBudgets.includes('budget')) { accMulti = 0.4; foodMulti = 0.6; transMulti = 0.5 }
+  else if (requestedBudgets.includes('luxury')) { accMulti = 3.5; foodMulti = 2.5; transMulti = 2.0 }
+
+  const breakdown = { accommodation: 500000 * actualDays * accMulti, food: 400000 * actualDays * foodMulti, transport: 250000 * actualDays * transMulti, misc: 150000 * actualDays }
+  const totalCost = breakdown.accommodation + breakdown.food + breakdown.transport + breakdown.misc
+  const fmt = (val: number) => new Intl.NumberFormat(lang === 'en' ? 'en-US' : 'vi-VN', { style: 'currency', currency: lang === 'en' ? 'USD' : 'VND', maximumFractionDigits: 0 }).format(lang === 'en' ? val / 25000 : val)
+
+  const vibeText = lang === 'vi' 
+    ? `Hành trình ${actualDays} ngày này được tinh chỉnh riêng cho gu "${formData.vibe}".`
+    : `This ${actualDays}-day itinerary is tailored for your "${formData.vibe}" vibe.`
 
   return {
-    destination: lang === 'en' ? formData.destEn : formData.destination,
-    overview: `${lang === 'en' ? rawData.overviewEn : rawData.overviewVi} ${vibeDescription}`,
+    destination: lang === 'en' ? formData.destinationEn : formData.destinationVi,
+    overview: `${lang === 'en' ? rawData.overviewEn : rawData.overviewVi} ${vibeText}`,
     insiderSecrets: lang === 'en' ? rawData.insiderSecretsEn : rawData.insiderSecretsVi,
-    budgetDetails: {
-      tier: budgetTier,
-      accommodation: fmt(budgetBreakdown.accommodation),
-      food: fmt(budgetBreakdown.food),
-      transport: fmt(budgetBreakdown.transport),
-      misc: fmt(budgetBreakdown.misc),
-      total: `${fmt(total * 0.9)} - ${fmt(total * 1.1)}`
-    },
-    days: selectedDays
+    budgetDetails: { tier: formData.budget.split(' ')[0], accommodation: fmt(breakdown.accommodation), food: fmt(breakdown.food), transport: fmt(breakdown.transport), misc: fmt(breakdown.misc), total: `${fmt(totalCost * 0.9)} - ${fmt(totalCost * 1.15)}` },
+    days
   }
 }

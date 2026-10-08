@@ -1,57 +1,46 @@
 'use client'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 
 const REGIONS = {
   "Miền Bắc": {
     en: "Northern Vietnam",
-    itemsVi: ["Thành phố Hà Nội", "Tỉnh Tuyên Quang (Hà Giang)", "Tỉnh Lào Cai (Yên Bái)", "Tỉnh Thái Nguyên (Bắc Kạn)", "Tỉnh Phú Thọ (Vĩnh Phúc, Hoà Bình)", "Tỉnh Bắc Ninh (Bắc Giang)", "Tỉnh Hưng Yên (Thái Bình)", "Thành phố Hải Phòng (Hải Dương)", "Tỉnh Ninh Bình (Hà Nam, Nam Định)", "Tỉnh Lai Châu", "Tỉnh Điện Biên", "Tỉnh Sơn La", "Tỉnh Lạng Sơn", "Tỉnh Quảng Ninh", "Tỉnh Cao Bằng"],
-    itemsEn: ["Hanoi City", "Tuyen Quang & Ha Giang Province", "Lao Cai & Yen Bai Province", "Thai Nguyen & Bac Kan Province", "Phu Tho, Vinh Phuc & Hoa Binh Province", "Bac Ninh & Bac Giang Province", "Hung Yen & Thai Binh Province", "Hai Phong City & Hai Duong", "Ninh Binh, Ha Nam & Nam Dinh Province", "Lai Chau Province", "Dien Bien Province", "Son La Province", "Lang Son Province", "Quang Ninh Province", "Cao Bang Province"]
+    itemsVi: ["Thành phố Hà Nội", "Tỉnh Quảng Ninh", "Tỉnh Lào Cai (Sa Pa)", "Tỉnh Ninh Bình", "Tỉnh Hà Giang"],
+    itemsEn: ["Hanoi City", "Quang Ninh Province", "Lao Cai (Sa Pa)", "Ninh Binh Province", "Ha Giang Province"]
   },
   "Miền Trung & Tây Nguyên": {
     en: "Central & Highlands",
-    itemsVi: ["Thành phố Huế", "Thành phố Đà Nẵng (Quảng Nam)", "Tỉnh Thanh Hoá", "Tỉnh Nghệ An", "Tỉnh Hà Tĩnh", "Tỉnh Quảng Trị (Quảng Bình)", "Tỉnh Quảng Ngãi (Kon Tum)", "Tỉnh Gia Lai (Bình Định)", "Tỉnh Khánh Hoà (Ninh Thuận)", "Tỉnh Lâm Đồng (Đắk Nông, Bình Thuận)", "Tỉnh Đắk Lắk (Phú Yên)"],
-    itemsEn: ["Hue City", "Da Nang City & Quang Nam", "Thanh Hoa Province", "Nghe An Province", "Ha Tinh Province", "Quang Tri & Quang Binh Province", "Quang Ngai & Kon Tum Province", "Gia Lai & Binh Dinh Province", "Khanh Hoa & Ninh Thuan Province", "Lam Dong, Dak Nong & Binh Thuan Province", "Dak Lak & Phu Yen Province"]
+    itemsVi: ["Thành phố Đà Nẵng", "Tỉnh Quảng Nam (Hội An)", "Thành phố Huế", "Tỉnh Khánh Hòa (Nha Trang)", "Tỉnh Lâm Đồng (Đà Lạt)", "Tỉnh Bình Định (Quy Nhơn)", "Tỉnh Phú Yên", "Tỉnh Ninh Thuận", "Tỉnh Quảng Bình"],
+    itemsEn: ["Da Nang City", "Quang Nam (Hoi An)", "Hue City", "Khanh Hoa (Nha Trang)", "Lam Dong (Da Lat)", "Binh Dinh (Quy Nhon)", "Phu Yen Province", "Ninh Thuan Province", "Quang Binh Province"]
   },
   "Miền Nam": {
     en: "Southern Vietnam",
-    itemsVi: ["Thành phố Hồ Chí Minh (BR-VT, Bình Dương)", "Tỉnh Đồng Nai (Bình Phước)", "Tỉnh Tây Ninh (Long An)", "Thành phố Cần Thơ (Sóc Trăng, Hậu Giang)", "Tỉnh Vĩnh Long (Bến Tre, Trà Vinh)", "Tỉnh Đồng Tháp (Tiền Giang)", "Tỉnh Cà Mau (Bạc Liêu)", "Tỉnh An Giang (Kiên Giang)"],
-    itemsEn: ["Ho Chi Minh City", "Dong Nai & Binh Phuoc Province", "Tay Ninh & Long An Province", "Can Tho City", "Vinh Long, Ben Tre & Tra Vinh Province", "Dong Thap & Tien Giang Province", "Ca Mau & Bac Lieu Province", "An Giang & Kien Giang Province"]
+    itemsVi: ["TP. Hồ Chí Minh", "Tỉnh Kiên Giang (Phú Quốc)", "Tỉnh Bình Thuận (Mũi Né)", "Tỉnh Bà Rịa - Vũng Tàu", "Thành phố Cần Thơ", "Tỉnh An Giang", "Tỉnh Đồng Tháp", "Tỉnh Tây Ninh", "Tỉnh Bến Tre"],
+    itemsEn: ["Ho Chi Minh City", "Kien Giang (Phu Quoc)", "Binh Thuan (Mui Ne)", "Ba Ria - Vung Tau", "Can Tho City", "An Giang Province", "Dong Thap Province", "Tay Ninh Province", "Ben Tre Province"]
   }
 }
 
 const UI_TEXT = {
-  vi: {
-    step1: "01. Chọn vùng miền", step2: "02. Chọn điểm đến", step3: "03. Thời gian", step4: "04. Ngân sách", step5: "05. Phong cách (Vibe)",
-    search: "Tìm nhanh...", submit: "Khám phá hành trình độc bản", loading: "Đang kiến tạo...",
-    durations: ["1 ngày", "2 ngày 1 đêm", "3 ngày 2 đêm", "4 ngày 3 đêm"],
-    budgets: ["Tiết kiệm (Phượt bụi)", "Thoải mái (Tiện nghi)", "Sang chảnh (5 sao)"],
-    vibes: ["Ẩm thực & Văn hóa", "Thiên nhiên hùng vĩ", "Nghỉ dưỡng & Chữa lành", "Phiêu lưu mạo hiểm"]
-  },
-  en: {
-    step1: "01. Region", step2: "02. Destination", step3: "03. Duration", step4: "04. Budget", step5: "05. Travel Vibe",
-    search: "Search...", submit: "Craft My Bespoke Journey", loading: "Crafting...",
-    durations: ["1 Day", "2 Days 1 Night", "3 Days 2 Nights", "4 Days 3 Nights"],
-    budgets: ["Budget (Backpacking)", "Comfort (Mid-range)", "Luxury (Premium)"],
-    vibes: ["Culinary & Culture", "Majestic Nature", "Wellness & Retreat", "Adventure & Trekking"]
-  }
+  vi: { step1: "01. Chọn vùng miền", step2: "02. Chọn điểm đến", step3: "03. Thời gian", step4: "04. Ngân sách", step5: "05. Phong cách (Vibe)", search: "Tìm nhanh...", submit: "Khám phá hành trình độc bản", loading: "Đang kiến tạo...", durations: ["1 ngày", "2 ngày 1 đêm", "3 ngày 2 đêm", "4 ngày 3 đêm"], budgets: ["Tiết kiệm (Phượt bụi)", "Thoải mái (Tiện nghi)", "Sang chảnh (5 sao)"], vibes: ["Ẩm thực & Văn hóa", "Thiên nhiên hùng vĩ", "Nghỉ dưỡng & Chữa lành", "Phiêu lưu mạo hiểm"] },
+  en: { step1: "01. Region", step2: "02. Destination", step3: "03. Duration", step4: "04. Budget", step5: "05. Travel Vibe", search: "Search...", submit: "Craft My Bespoke Journey", loading: "Crafting...", durations: ["1 Day", "2 Days 1 Night", "3 Days 2 Nights", "4 Days 3 Nights"], budgets: ["Budget (Backpacking)", "Comfort (Mid-range)", "Luxury (Premium)"], vibes: ["Culinary & Culture", "Majestic Nature", "Wellness & Retreat", "Adventure & Trekking"] }
 }
 
 export default function ItineraryForm({ onSubmit, loading, lang }: { onSubmit: any, loading: boolean, lang: 'vi' | 'en' }) {
-  const [activeRegion, setActiveRegion] = useState<keyof typeof REGIONS>("Miền Bắc")
+  const [activeRegion, setActiveRegion] = useState<keyof typeof REGIONS>("Miền Nam") // Mặc định để Miền Nam cho dễ test SG
   const [searchQuery, setSearchQuery] = useState("")
   const [openDropdown, setOpenDropdown] = useState<'duration' | 'budget' | 'vibe' | null>(null)
   
   const text = UI_TEXT[lang]
 
   const [formData, setFormData] = useState({
-    destinationVi: 'Thành phố Hà Nội', destinationEn: 'Hanoi City',
-    duration: text.durations[3], budget: text.budgets[1], vibe: text.vibes[0]
+    destinationVi: 'TP. Hồ Chí Minh', destinationEn: 'Ho Chi Minh City',
+    duration: text.durations[2], budget: text.budgets[1], vibe: text.vibes[0]
   })
 
   useEffect(() => {
     setFormData(prev => ({
       ...prev,
-      duration: text.durations[UI_TEXT[lang === 'vi' ? 'en' : 'vi'].durations.indexOf(prev.duration)] || text.durations[3],
+      duration: text.durations[UI_TEXT[lang === 'vi' ? 'en' : 'vi'].durations.indexOf(prev.duration)] || text.durations[2],
       budget: text.budgets[UI_TEXT[lang === 'vi' ? 'en' : 'vi'].budgets.indexOf(prev.budget)] || text.budgets[1],
       vibe: text.vibes[UI_TEXT[lang === 'vi' ? 'en' : 'vi'].vibes.indexOf(prev.vibe)] || text.vibes[0]
     }))
@@ -62,13 +51,11 @@ export default function ItineraryForm({ onSubmit, loading, lang }: { onSubmit: a
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSubmit({ destination: formData.destinationVi, destEn: formData.destinationEn, duration: formData.duration, budget: formData.budget, vibe: formData.vibe, lang })
+    onSubmit({ destinationVi: formData.destinationVi, destinationEn: formData.destinationEn, duration: formData.duration, budget: formData.budget, vibe: formData.vibe, lang })
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-10 bg-white p-8 sm:p-14 rounded-[2.5rem] border border-zinc-200/85 shadow-sm relative z-10">
-      
-      {/* Vùng & Tỉnh (Tương tự cũ nhưng gọn gàng hơn) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1 space-y-4">
           <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">{text.step1}</label>
@@ -81,7 +68,6 @@ export default function ItineraryForm({ onSubmit, loading, lang }: { onSubmit: a
             ))}
           </div>
         </div>
-
         <div className="lg:col-span-2 space-y-4">
           <div className="flex justify-between items-center"><label className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">{text.step2}</label></div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
@@ -98,8 +84,6 @@ export default function ItineraryForm({ onSubmit, loading, lang }: { onSubmit: a
           </div>
         </div>
       </div>
-
-      {/* Thời gian, Ngân sách & Phong cách */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-zinc-100">
         {[
           { key: 'duration', label: text.step3, options: text.durations, val: formData.duration },
@@ -121,10 +105,14 @@ export default function ItineraryForm({ onSubmit, loading, lang }: { onSubmit: a
           </div>
         ))}
       </div>
-
-      <button type="submit" disabled={loading} className="w-full mt-8 bg-zinc-950 hover:bg-zinc-800 text-white font-bold text-xs uppercase tracking-[0.2em] py-5 rounded-2xl transition-all shadow-lg">
+      <motion.button 
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        type="submit" disabled={loading} 
+        className="w-full mt-8 bg-zinc-950 hover:bg-zinc-800 text-white font-bold text-xs uppercase tracking-[0.2em] py-5 rounded-2xl shadow-lg disabled:opacity-50 transition-shadow hover:shadow-2xl"
+      >
         {loading ? text.loading : text.submit}
-      </button>
+      </motion.button>
     </form>
   )
 }

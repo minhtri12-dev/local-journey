@@ -1,95 +1,83 @@
 'use client'
 import { useState } from 'react'
+import { motion } from 'framer-motion'
+import { ItineraryResultData } from '../types'
 
-export default function ItineraryResult({ data, onBack, lang }: { data: any, onBack: () => void, lang: 'vi' | 'en' }) {
-  const [subscribed, setSubscribed] = useState(false)
-  const t = {
-    vi: { overview: "Cẩm nang Thổ địa", budget: "Dự toán ngân sách", save: "Lưu PDF / In Cẩm Nang", new: "Khởi tạo hành trình mới", acc: "Lưu trú", food: "Ăn uống", trans: "Di chuyển", misc: "Tham quan/Phát sinh", total: "Tổng dự kiến", newsTitle: "Nhận cẩm nang", newsDesc: "Khám phá vùng đất mới mỗi tháng.", subBtn: "Đăng ký" },
-    en: { overview: "Curated Guide", budget: "Estimated Budget Breakdown", save: "Save PDF / Print Guide", new: "Create New Journey", acc: "Accommodation", food: "Dining", trans: "Transport", misc: "Activities/Misc", total: "Total Range", newsTitle: "Newsletter", newsDesc: "Discover hidden gems monthly.", subBtn: "Subscribe" }
-  }[lang]
+const ImageWithFallback = ({ src, alt }: { src: string, alt: string }) => {
+  const [error, setError] = useState(false)
+  
+  if (error || !src) {
+    return (
+      <div className="w-full h-48 bg-[#F4F4F5] flex flex-col items-center justify-center rounded-t-2xl border-b border-zinc-200">
+        <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest px-6 text-center leading-relaxed">
+          Dành chỗ cho<br/>{alt}
+        </span>
+      </div>
+    )
+  }
+  
+  return <img src={src} alt={alt} onError={() => setError(true)} className="w-full h-48 object-cover rounded-t-2xl" />
+}
+
+export default function ItineraryResult({ data, onBack, lang }: { data: ItineraryResultData, onBack: () => void, lang: 'vi'|'en' }) {
+  if (!data) return null
 
   return (
-    <div className="space-y-12">
-      <button onClick={onBack} className="group flex items-center gap-2 text-zinc-500 hover:text-zinc-950 text-xs font-bold uppercase tracking-[0.15em] mb-4 print:hidden">← {lang === 'vi' ? 'Quay lại' : 'Back'}</button>
+    <div className="space-y-12 animate-in fade-in duration-700">
+      <button onClick={onBack} className="text-xs font-bold uppercase tracking-[0.2em] text-zinc-400 hover:text-zinc-900 transition-colors">
+        ← {lang === 'vi' ? 'Làm lại' : 'Start Over'}
+      </button>
 
-      {/* Khối 1: Tổng quan & Ngân sách chi tiết */}
-      <div className="bg-white border border-zinc-200 rounded-[2rem] p-8 sm:p-14 shadow-sm relative space-y-10">
-        <div className="max-w-3xl">
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 block mb-3">{t.overview}</span>
-          <h2 className="text-4xl sm:text-6xl font-serif-editorial text-zinc-950 mb-6 tracking-tight">{data.destination}</h2>
-          <p className="text-zinc-600 text-base leading-relaxed">{data.overview}</p>
-        </div>
-
-        {/* Bảng tính chi phí bóc tách */}
-        {data.budgetDetails && (
-          <div className="bg-[#FAF9F6] border border-zinc-100 rounded-2xl p-6 md:p-8 print:border-black print:bg-white">
-            <h4 className="text-xs font-bold uppercase tracking-[0.15em] text-zinc-900 mb-6">{t.budget} ({data.budgetDetails.tier})</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 text-sm text-zinc-600">
-              <div><span className="block text-[10px] uppercase tracking-widest text-zinc-400 mb-1">{t.acc}</span><span className="font-semibold text-zinc-800">{data.budgetDetails.accommodation}</span></div>
-              <div><span className="block text-[10px] uppercase tracking-widest text-zinc-400 mb-1">{t.food}</span><span className="font-semibold text-zinc-800">{data.budgetDetails.food}</span></div>
-              <div><span className="block text-[10px] uppercase tracking-widest text-zinc-400 mb-1">{t.trans}</span><span className="font-semibold text-zinc-800">{data.budgetDetails.transport}</span></div>
-              <div><span className="block text-[10px] uppercase tracking-widest text-zinc-400 mb-1">{t.misc}</span><span className="font-semibold text-zinc-800">{data.budgetDetails.misc}</span></div>
-            </div>
-            <div className="border-t border-zinc-200 pt-4 flex justify-between items-center font-bold">
-              <span className="text-xs uppercase tracking-widest text-zinc-900">{t.total}</span>
-              <span className="text-lg text-amber-600">{data.budgetDetails.total}</span>
-            </div>
-          </div>
-        )}
+      <div className="space-y-6">
+        <h1 className="text-4xl md:text-6xl font-serif-editorial text-zinc-950 tracking-tight">{data.destination}</h1>
+        <p className="text-lg text-zinc-600 leading-relaxed max-w-3xl">{data.overview}</p>
       </div>
 
-      {/* Khối 2: Lịch trình cố định ảnh */}
-      <div className="space-y-16 pt-8">
-        {data.days.map((dayItem: any) => (
-          <div key={dayItem.day} className="space-y-8 print:break-inside-avoid">
-            <div className="flex items-center gap-5">
-              <div className="w-12 h-12 rounded-xl bg-zinc-950 text-white flex items-center justify-center font-serif-editorial text-2xl print:bg-white print:text-black print:border">0{dayItem.day}</div>
-              <h3 className="text-2xl font-serif-editorial text-zinc-950">{lang === 'vi' ? 'Ngày' : 'Day'} {dayItem.day}: {dayItem.title}</h3>
+      <div className="bg-white p-8 rounded-3xl border border-zinc-200 shadow-sm">
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-900 mb-6">
+          {lang === 'vi' ? `Dự toán ngân sách (${data.budgetDetails.tier})` : `Budget Estimate (${data.budgetDetails.tier})`}
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+          <div><p className="text-[10px] text-zinc-400 uppercase tracking-wider mb-1">Lưu trú</p><p className="font-bold">{data.budgetDetails.accommodation}</p></div>
+          <div><p className="text-[10px] text-zinc-400 uppercase tracking-wider mb-1">Ăn uống</p><p className="font-bold">{data.budgetDetails.food}</p></div>
+          <div><p className="text-[10px] text-zinc-400 uppercase tracking-wider mb-1">Di chuyển</p><p className="font-bold">{data.budgetDetails.transport}</p></div>
+          <div><p className="text-[10px] text-zinc-400 uppercase tracking-wider mb-1">Phát sinh</p><p className="font-bold">{data.budgetDetails.misc}</p></div>
+        </div>
+        <div className="pt-6 border-t border-zinc-100 flex justify-between items-center">
+          <span className="text-sm font-bold uppercase tracking-wider text-zinc-900">Tổng dự kiến</span>
+          <span className="text-xl font-bold text-amber-600">{data.budgetDetails.total}</span>
+        </div>
+      </div>
+
+      <div className="space-y-12">
+        {data.days.map((day) => (
+          <div key={day.day} className="space-y-6">
+            <div className="flex items-center gap-4">
+              <span className="flex items-center justify-center w-10 h-10 bg-zinc-950 text-white rounded-full font-serif-editorial text-lg">{day.day.toString().padStart(2, '0')}</span>
+              <h3 className="text-xl font-serif-editorial text-zinc-900">{day.title}</h3>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {dayItem.activities.map((act: any, index: number) => (
-                <div key={index} className="bg-white border border-zinc-200 rounded-[1.5rem] overflow-hidden flex flex-col print:border-black print:shadow-none">
-                  <div className="relative h-56 bg-zinc-100">
-                    <img src={act.image} alt={act.title} className="w-full h-full object-cover" />
-                    <div className="absolute top-4 left-4 bg-white/95 text-zinc-950 font-bold text-[10px] px-3 py-1.5 rounded-xl">⏰ {act.time}</div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-0 md:pl-14">
+              {day.activities.map((act, idx) => (
+                <motion.div whileHover={{ y: -4 }} key={idx} className="bg-white rounded-2xl border border-zinc-200 shadow-sm flex flex-col">
+                  <div className="relative">
+                    <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-[10px] font-bold text-zinc-900 z-10 flex items-center gap-1.5 shadow-sm">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>{act.time}
+                    </div>
+                    <ImageWithFallback src={act.image} alt={act.title} />
                   </div>
-                  <div className="p-6 space-y-3">
-                    <h4 className="font-serif-editorial font-bold text-xl">{act.title}</h4>
-                    <p className="text-zinc-600 text-sm">{act.description}</p>
-                    <div className="inline-block bg-zinc-100 text-zinc-600 text-[10px] font-bold px-3 py-1 rounded-lg">💰 {act.cost}</div>
+                  <div className="p-6 flex-1 flex flex-col">
+                    <h4 className="text-base font-bold text-zinc-900 mb-2">{act.title}</h4>
+                    <p className="text-sm text-zinc-500 mb-4 flex-1">{act.description}</p>
+                    <div className="flex items-center text-xs font-bold text-amber-600">
+                      <span>💰 {act.cost}</span>
+                    </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
         ))}
-      </div>
-
-      {/* Khối 3: Outro & Nút In (Sống động hơn) */}
-      <div className="pt-20 pb-10 space-y-16 border-t border-zinc-200 mt-16 print:hidden">
-        <div className="bg-zinc-950 rounded-[2rem] p-10 sm:p-14 text-center">
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-5">
-            <button onClick={() => window.print()} className="w-full sm:w-auto bg-white text-zinc-950 px-8 py-4 rounded-full font-bold text-xs uppercase tracking-[0.15em]">{t.save}</button>
-            <button onClick={onBack} className="w-full sm:w-auto bg-transparent border border-zinc-700 text-white px-8 py-4 rounded-full font-bold text-xs uppercase tracking-[0.15em]">{t.new}</button>
-          </div>
-        </div>
-
-        <div className="flex flex-col md:flex-row items-center justify-between gap-10">
-          <div className="w-full md:w-1/2 space-y-4">
-            <h4 className="text-sm font-bold uppercase tracking-[0.15em] text-zinc-900">{t.newsTitle}</h4>
-            <p className="text-sm text-zinc-500">{t.newsDesc}</p>
-            {!subscribed ? (
-              <div className="flex items-center gap-2 mt-2">
-                <input type="email" placeholder="Email..." className="w-full border border-zinc-300 rounded-lg px-4 py-3 text-sm outline-none" />
-                <button onClick={() => setSubscribed(true)} className="bg-zinc-950 text-white px-6 py-3 rounded-lg text-xs font-bold uppercase hover:bg-zinc-800">{t.subBtn}</button>
-              </div>
-            ) : (
-              <div className="bg-green-50 text-green-700 border border-green-200 px-4 py-3 rounded-lg text-sm font-medium">
-                {lang === 'vi' ? '✓ Đăng ký thành công! Hãy kiểm tra hộp thư.' : '✓ Subscribed successfully! Check your inbox.'}
-              </div>
-            )}
-          </div>
-        </div>
       </div>
     </div>
   )
